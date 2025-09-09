@@ -1,0 +1,26 @@
+# Build output
+dist
+build
+
+# Dependencies
+node_modules
+
+# Test output
+coverage
+
+# Environment files (optional, để bảo mật)
+.env*
+!.env.production
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor config
+.vscode
+.idea
+*.sw?
+
+# Git
+.git
+.gitignore

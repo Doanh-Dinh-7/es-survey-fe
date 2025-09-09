@@ -1,0 +1,51 @@
+:root {
+    --switch-duration: 1.9s;
+    --switch-name: scale;
+    --switch-ease: cubic-bezier(0.68, 0.05, 0.36, 1);
+  }
+  
+  .-animated {
+    --switch-duration: 1.5s;
+    --switch-name: scale-fast;
+    --switch-ease: cubic-bezier(0.65, -0.05, 0.36, 1);
+  }
+  
+
+  @keyframes scale {
+    0% {
+      -webkit-mask-size: 0;
+      mask-size: 0;
+    }
+    10% {
+      -webkit-mask-size: 50vmax;
+      mask-size: 50vmax;
+    }
+    90% {
+      -webkit-mask-size: 50vmax;
+      mask-size: 50vmax;
+    }
+    to {
+      -webkit-mask-size: 200vmax;
+      mask-size: 2000vmax;
+    }
+  }
+  
+  @keyframes scale-fast {
+      0% {
+        -webkit-mask-size: 0;
+        mask-size: 0;
+      }
+      10% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+      }
+      80% {
+        -webkit-mask-size: 50vmax;
+        mask-size: 50vmax;
+      }
+      to {
+        -webkit-mask-size: 200vmax;
+        mask-size: 2000vmax;
+      }
+    }
+  
