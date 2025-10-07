@@ -79,6 +79,45 @@ const styles = StyleSheet.create({
   pieImage: { width: 200, height: 200, margin: "0 auto", marginBottom: 8 },
   barImage: { width: 400, height: 200, margin: "0 auto", marginBottom: 8 },
   table: { fontFamily: "Roboto" },
+  matrixTable: {
+    display: "flex",
+    flexDirection: "column",
+    marginTop: 8,
+    marginBottom: 12,
+    border: "1px solid #CBD5E0",
+    borderRadius: 4,
+  },
+  matrixHeaderRow: {
+    display: "flex",
+    flexDirection: "row",
+    backgroundColor: "#EDF2F7",
+    borderBottom: "2px solid #CBD5E0",
+  },
+  matrixRow: {
+    display: "flex",
+    flexDirection: "row",
+    borderBottom: "1px solid #E2E8F0",
+  },
+  matrixCell: {
+    padding: 6,
+    fontSize: 9,
+    borderRight: "1px solid #E2E8F0",
+    fontFamily: "Roboto",
+  },
+  matrixHeaderCell: {
+    padding: 6,
+    fontSize: 10,
+    fontWeight: "bold",
+    borderRight: "1px solid #CBD5E0",
+    fontFamily: "Roboto",
+  },
+  matrixValueCell: {
+    padding: 6,
+    fontSize: 9,
+    textAlign: "center",
+    borderRight: "1px solid #E2E8F0",
+    fontFamily: "Roboto",
+  },
 });
 
 const ExportSurveyPreview = ({
@@ -199,6 +238,134 @@ const ExportSurveyPreview = ({
                   ))}
                 </View>
               )}
+            {q.type === "matrix_choice" && q.summary && (
+              <View style={styles.matrixTable}>
+                {/* Header Row */}
+                <View style={styles.matrixHeaderRow}>
+                  <Text style={{ ...styles.matrixHeaderCell, flex: 2 }}>
+                    Questions
+                  </Text>
+                  {q.summary?.[0]?.columns?.map((col: any, colIdx: number) => (
+                    <Text
+                      key={colIdx}
+                      style={{ ...styles.matrixHeaderCell, flex: 1 }}
+                    >
+                      {col.columnLabel}
+                    </Text>
+                  ))}
+                </View>
+                {/* Data Rows */}
+                {q.summary?.map((row: any, rowIdx: number) => (
+                  <View key={rowIdx} style={styles.matrixRow}>
+                    <Text
+                      style={{
+                        ...styles.matrixCell,
+                        flex: 2,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {row.rowLabel}
+                    </Text>
+                    {row.columns?.map((col: any, colIdx: number) => (
+                      <View
+                        key={colIdx}
+                        style={{ ...styles.matrixValueCell, flex: 1 }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "bold",
+                            color: "#3182CE",
+                          }}
+                        >
+                          {col.count}
+                        </Text>
+                        <Text style={{ fontSize: 8, color: "#718096" }}>
+                          ({col.percentage}%)
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            )}
+            {q.type === "matrix_input" && q.summary && (
+              <View style={styles.matrixTable}>
+                {/* Header Row */}
+                <View style={styles.matrixHeaderRow}>
+                  <Text style={{ ...styles.matrixHeaderCell, flex: 2 }}>
+                    Questions
+                  </Text>
+                  {q.summary?.[0]?.columns?.map((col: any, colIdx: number) => (
+                    <Text
+                      key={colIdx}
+                      style={{ ...styles.matrixHeaderCell, flex: 2 }}
+                    >
+                      {col.columnLabel}
+                    </Text>
+                  ))}
+                </View>
+                {/* Data Rows */}
+                {q.summary?.map((row: any, rowIdx: number) => (
+                  <View key={rowIdx} style={styles.matrixRow}>
+                    <Text
+                      style={{
+                        ...styles.matrixCell,
+                        flex: 2,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {row.rowLabel}
+                    </Text>
+                    {row.columns?.map((col: any, colIdx: number) => (
+                      <View
+                        key={colIdx}
+                        style={{ ...styles.matrixCell, flex: 2 }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 8,
+                            color: "#38A169",
+                            fontWeight: "bold",
+                            marginBottom: 2,
+                          }}
+                        >
+                          {col.count} responses
+                        </Text>
+                        {col.answers
+                          ?.slice(0, 2)
+                          .map((ans: string, ansIdx: number) => (
+                            <Text
+                              key={ansIdx}
+                              style={{
+                                fontSize: 7,
+                                color: "#4A5568",
+                                marginBottom: 1,
+                              }}
+                            >
+                              •{" "}
+                              {ans.length > 30
+                                ? ans.substring(0, 30) + "..."
+                                : ans}
+                            </Text>
+                          ))}
+                        {col.answers?.length > 2 && (
+                          <Text
+                            style={{
+                              fontSize: 7,
+                              color: "#3182CE",
+                              marginTop: 1,
+                            }}
+                          >
+                            +{col.answers.length - 2} more
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         ))}
       </Page>

@@ -33,6 +33,8 @@ import { SubmitSurveyPayload } from "../services/survey";
 import { getSurveyById, SubmitSurvey } from "../services/survey";
 import Logo from "../components/Navbar/Logo";
 import ImagePreviewModal from "../components/common/ImagePreviewModal";
+import MatrixChoicePreview from "../components/Survey/SurveyPreview/MatrixChoicePreview";
+import MatrixInputPreview from "../components/Survey/SurveyPreview/MatrixInputPreview";
 interface LocationState {
   survey: Survey;
   isPreview?: boolean;
@@ -431,7 +433,41 @@ const SurveyPreviewPage = () => {
     questionsToValidate.forEach((question) => {
       if (question.isRequired) {
         const answer = answers[question.id!];
+
+        // Validation cho matrix questions
         if (
+          question.type === "matrix_choice" ||
+          question.type === "matrix_input"
+        ) {
+          if (
+            !answer ||
+            typeof answer !== "object" ||
+            Object.keys(answer).length === 0
+          ) {
+            newQuestionErrors[question.id!] = "Can not be left blank.";
+            hasError = true;
+          } else if (question.type === "matrix_choice") {
+            // Kiểm tra tất cả rows đã được chọn
+            const requiredRows = question.matrixRows?.length || 0;
+            const answeredRows = Object.keys(answer).length;
+            if (answeredRows < requiredRows) {
+              newQuestionErrors[question.id!] = "Please answer all rows.";
+              hasError = true;
+            }
+          } else if (question.type === "matrix_input") {
+            // Kiểm tra tất cả cells đã được điền
+            const requiredCells =
+              (question.matrixRows?.length || 0) *
+              (question.matrixColumns?.length || 0);
+            const answeredCells = Object.values(answer).filter(
+              (val) => val && String(val).trim()
+            ).length;
+            if (answeredCells < requiredCells) {
+              newQuestionErrors[question.id!] = "Please fill all cells.";
+              hasError = true;
+            }
+          }
+        } else if (
           !answer ||
           (Array.isArray(answer) && answer.length === 0) ||
           (typeof answer === "object" &&
@@ -480,6 +516,48 @@ const SurveyPreviewPage = () => {
           }
           const question = survey.questions.find((q) => q.id === questionId);
           if (!question) return null;
+
+          // Xử lý matrix questions
+          if (
+            question.type === "matrix_choice" ||
+            question.type === "matrix_input"
+          ) {
+            if (
+              typeof answer === "object" &&
+              answer !== null &&
+              !Array.isArray(answer)
+            ) {
+              const matrixAnswers: any[] = [];
+
+              if (question.type === "matrix_choice") {
+                // Format: { rowId: columnId, ... }
+                Object.entries(answer).forEach(([rowKey, columnId]) => {
+                  matrixAnswers.push({
+                    rowId: rowKey,
+                    columnId: columnId,
+                  });
+                });
+              } else if (question.type === "matrix_input") {
+                // Format: { "rowId_columnId": "value", ... }
+                Object.entries(answer).forEach(([key, value]) => {
+                  if (value && String(value).trim()) {
+                    const [rowId, columnId] = key.split("_");
+                    matrixAnswers.push({
+                      rowId: rowId,
+                      columnId: columnId,
+                      inputValue: String(value),
+                    });
+                  }
+                });
+              }
+
+              return {
+                questionId: questionId,
+                answer: "matrix", // Placeholder để pass validation
+                matrixAnswers: matrixAnswers,
+              };
+            }
+          }
 
           if (
             typeof answer === "object" &&
@@ -733,6 +811,30 @@ const SurveyPreviewPage = () => {
             </VStack>
             {error && <FormErrorMessage>{error}</FormErrorMessage>}
           </FormControl>
+        );
+      case "matrix_choice":
+        return (
+          <MatrixChoicePreview
+            questionId={questionId}
+            matrixRows={question.matrixRows || []}
+            matrixColumns={question.matrixColumns || []}
+            value={answers[questionId] || {}}
+            onChange={(value) => handleAnswerChange(questionId, value)}
+            isRequired={question.isRequired}
+            error={error}
+          />
+        );
+      case "matrix_input":
+        return (
+          <MatrixInputPreview
+            questionId={questionId}
+            matrixRows={question.matrixRows || []}
+            matrixColumns={question.matrixColumns || []}
+            value={answers[questionId] || {}}
+            onChange={(value) => handleAnswerChange(questionId, value)}
+            isRequired={question.isRequired}
+            error={error}
+          />
         );
       default:
         return null;

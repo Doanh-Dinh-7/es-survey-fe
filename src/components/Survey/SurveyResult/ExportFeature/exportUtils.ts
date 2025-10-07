@@ -4,8 +4,10 @@ import autoTable from "jspdf-autotable";
 
 function formatDate(dateString: string) {
   const d = new Date(dateString);
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
 }
 
 export function slugify(str: string) {
@@ -29,7 +31,10 @@ export function buildTableData(apiData: any) {
     });
   });
   const questionIds = Object.keys(questionMap);
-  const headers = ["submitted_at", ...questionIds.map(qid => questionMap[qid])];
+  const headers = [
+    "submitted_at",
+    ...questionIds.map((qid) => questionMap[qid]),
+  ];
 
   // Tạo từng dòng dữ liệu
   const rows = responses.map((resp: any) => {
@@ -45,15 +50,34 @@ export function buildTableData(apiData: any) {
         row.push("");
         return;
       }
+
+      // Xử lý matrix questions
+      if (ans.type === "matrix_choice" && Array.isArray(ans.answer)) {
+        const matrixText = ans.answer
+          .map((cell: any) => `${cell.row}: ${cell.column}`)
+          .join("; ");
+        row.push(matrixText);
+        return;
+      }
+
+      if (ans.type === "matrix_input" && Array.isArray(ans.answer)) {
+        const matrixText = ans.answer
+          .map((cell: any) => `${cell.row} - ${cell.column}: ${cell.value}`)
+          .join("; ");
+        row.push(matrixText);
+        return;
+      }
+
       if (Array.isArray(ans.answer)) {
         const processed = ans.answer.map((txt: string) =>
           txt.startsWith("Other: ") ? txt.slice(7) : txt
         );
         row.push(processed.join(", "));
       } else {
-        const value = typeof ans.answer === "string" && ans.answer.startsWith("Other: ")
-          ? ans.answer.slice(7)
-          : ans.answer || "";
+        const value =
+          typeof ans.answer === "string" && ans.answer.startsWith("Other: ")
+            ? ans.answer.slice(7)
+            : ans.answer || "";
         row.push(value);
       }
     });
@@ -63,10 +87,14 @@ export function buildTableData(apiData: any) {
   return { headers, rows };
 }
 
-export function exportCSV(headers: string[], rows: string[][], fileName: string) {
+export function exportCSV(
+  headers: string[],
+  rows: string[][],
+  fileName: string
+) {
   let csv = headers.join(",") + "\n";
-  rows.forEach(row => {
-    csv += row.map(cell => `"${cell}"`).join(",") + "\n";
+  rows.forEach((row) => {
+    csv += row.map((cell) => `"${cell}"`).join(",") + "\n";
   });
   // Thêm BOM để Excel nhận đúng UTF-8
   const BOM = "\uFEFF";

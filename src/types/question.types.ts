@@ -2,7 +2,9 @@ export type QuestionType =
   | "multiple_choice"
   | "long_text"
   | "short_text"
-  | "checkbox";
+  | "checkbox"
+  | "matrix_choice"
+  | "matrix_input";
 
 export interface Option {
   id?: string;
@@ -10,6 +12,34 @@ export interface Option {
   optionText: string;
   optionMediaUrl?: string;
   isOther?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MatrixRow {
+  id?: string;
+  questionId?: string;
+  label: string;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MatrixColumn {
+  id?: string;
+  questionId?: string;
+  label: string;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MatrixAnswer {
+  id?: string;
+  answerId?: string;
+  rowId: string;
+  columnId?: string;
+  inputValue?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -26,6 +56,8 @@ export interface Question {
   updatedAt?: string;
   options: Option[];
   questionMediaUrl?: string;
+  matrixRows?: MatrixRow[];
+  matrixColumns?: MatrixColumn[];
 }
 
 export interface SurveySettings {
@@ -56,4 +88,11 @@ export interface Survey {
   questions?: Question[];
   settings?: SurveySettings;
   surveyMediaUrl?: string;
+}
+
+export interface SurveyAnswer {
+  questionId: string;
+  answer: string;
+  customText?: string;
+  matrixAnswers?: MatrixAnswer[];
 }

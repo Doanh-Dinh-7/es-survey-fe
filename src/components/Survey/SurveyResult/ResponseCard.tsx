@@ -6,8 +6,14 @@ import {
   Tag,
   Icon,
   IconButton,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
 } from "@chakra-ui/react";
-import { BiText, BiCheckSquare } from "react-icons/bi";
+import { BiText, BiCheckSquare, BiGrid } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import { FaTrash } from "react-icons/fa";
 
@@ -52,6 +58,8 @@ const questionTypeIcons = {
   short_text: { icon: BiText, color: "#4285F4" },
   multiple_choice: { icon: FaRegDotCircle, color: "#0F9D58" },
   checkbox: { icon: BiCheckSquare, color: "#F4B400" },
+  matrix_choice: { icon: BiGrid, color: "#9C27B0" },
+  matrix_input: { icon: BiGrid, color: "#FF9800" },
 };
 
 const ResponseCard = ({ response, questions, onDelete }: ResponseCardProps) => {
@@ -101,6 +109,62 @@ const ResponseCard = ({ response, questions, onDelete }: ResponseCardProps) => {
             <Text textAlign="justify" fontSize="sm" color="gray.700">
               {answer?.answer}
             </Text>
+          </Box>
+        );
+      case "matrix_choice":
+        return (
+          <Box overflowX="auto">
+            <Table size="sm" variant="simple">
+              <Thead bg="blue.50">
+                <Tr>
+                  <Th>Question</Th>
+                  <Th>Selected Answer</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {(answer?.answer as any[])?.map((cell: any, index: number) => (
+                  <Tr key={index}>
+                    <Td fontWeight="medium">{cell.row}</Td>
+                    <Td>
+                      <Tag colorScheme="blue" size="md">
+                        {cell.column}
+                      </Tag>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </Box>
+        );
+      case "matrix_input":
+        return (
+          <Box overflowX="auto">
+            <Table size="sm" variant="simple">
+              <Thead bg="green.50">
+                <Tr>
+                  <Th>Question</Th>
+                  <Th>Column</Th>
+                  <Th>Answer</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {(answer?.answer as any[])?.map((cell: any, index: number) => (
+                  <Tr key={index}>
+                    <Td fontWeight="medium">{cell.row}</Td>
+                    <Td>
+                      <Tag colorScheme="green" size="sm">
+                        {cell.column}
+                      </Tag>
+                    </Td>
+                    <Td>
+                      <Box bg="gray.100" p={2} borderRadius="md">
+                        <Text fontSize="sm">{cell.value}</Text>
+                      </Box>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
           </Box>
         );
 

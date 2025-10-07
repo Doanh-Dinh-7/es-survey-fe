@@ -389,7 +389,6 @@ const theme = extendTheme({
       variants: {
         solid: (props: { status?: string }) => {
           const { status } = props;
-          console.log("Alert status:", status);
 
           if (status === "success") {
             return {

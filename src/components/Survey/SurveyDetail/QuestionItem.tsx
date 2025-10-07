@@ -18,10 +18,18 @@ import LongTextInput from "./input-types/LongTextInput";
 import ShortTextInput from "./input-types/ShortTextInput";
 import MultipleChoiceInput from "./input-types/MultipleChoiceInput";
 import CheckboxInput from "./input-types/CheckboxInput";
+import MatrixChoiceInput from "./input-types/MatrixChoiceInput";
+import MatrixInputInput from "./input-types/MatrixInputInput";
 import RequiredToggle from "../../common/RequiredToggle";
 import { BiTrash, BiText, BiCheckSquare, BiImage } from "react-icons/bi";
+import { TbGrid4X4, TbGridDots } from "react-icons/tb";
 import { FaRegDotCircle } from "react-icons/fa";
-import { QuestionType, Option } from "../../../types/question.types";
+import {
+  QuestionType,
+  Option,
+  MatrixRow,
+  MatrixColumn,
+} from "../../../types/question.types";
 import { uploadMedia } from "../../../services/media";
 import { IoMdClose } from "react-icons/io";
 import ImagePreviewModal from "../../common/ImagePreviewModal";
@@ -33,6 +41,8 @@ interface QuestionItemProps {
   type: QuestionType;
   isRequired: boolean;
   options: Option[];
+  matrixRows?: MatrixRow[];
+  matrixColumns?: MatrixColumn[];
   onChange: (order: number, field: string, value: any) => void;
   onDelete: (order: number) => void;
   isReadOnly?: boolean;
@@ -61,6 +71,16 @@ const typeMeta = {
     label: "Checkbox",
     subLabel: "Multi select",
   },
+  matrix_choice: {
+    icon: <TbGridDots color="#9C27B0" />,
+    label: "Matrix Choice",
+    subLabel: "Grid single select",
+  },
+  matrix_input: {
+    icon: <TbGrid4X4 color="#E91E63" />,
+    label: "Matrix Input",
+    subLabel: "Grid text input",
+  },
 };
 
 const QuestionItem: FC<QuestionItemProps> = ({
@@ -69,6 +89,8 @@ const QuestionItem: FC<QuestionItemProps> = ({
   type,
   isRequired,
   options,
+  matrixRows = [],
+  matrixColumns = [],
   onChange,
   onDelete,
   isReadOnly = false,
@@ -98,6 +120,24 @@ const QuestionItem: FC<QuestionItemProps> = ({
       onChange(order, "options", [
         { optionText: "Option 1" },
         { optionText: "Option 2" },
+      ]);
+    } else if (newType === "matrix_choice") {
+      onChange(order, "matrixRows", [
+        { label: "Row 1", order: 1 },
+        { label: "Row 2", order: 2 },
+      ]);
+      onChange(order, "matrixColumns", [
+        { label: "Option 1", order: 1 },
+        { label: "Option 2", order: 2 },
+      ]);
+    } else if (newType === "matrix_input") {
+      onChange(order, "matrixRows", [
+        { label: "Row 1", order: 1 },
+        { label: "Row 2", order: 2 },
+      ]);
+      onChange(order, "matrixColumns", [
+        { label: "Column 1", order: 1 },
+        { label: "Column 2", order: 2 },
       ]);
     }
   };
@@ -193,6 +233,8 @@ const QuestionItem: FC<QuestionItemProps> = ({
           <option value="short_text">Short Text</option>
           <option value="multiple_choice">Multiple Choice</option>
           <option value="checkbox">Checkbox</option>
+          <option value="matrix_choice">Matrix Choice</option>
+          <option value="matrix_input">Matrix Input</option>
         </Select>
         <RequiredToggle
           isRequired={isRequired}
@@ -299,6 +341,30 @@ const QuestionItem: FC<QuestionItemProps> = ({
             isReadOnly={isReadOnly}
             isDisabled={isDisabled}
             handleMarkDeleteMedia={handleMarkDeleteMedia}
+          />
+        )}
+        {type === "matrix_choice" && (
+          <MatrixChoiceInput
+            matrixRows={matrixRows}
+            matrixColumns={matrixColumns}
+            onChange={(newRows, newColumns) => {
+              onChange(order, "matrixRows", newRows);
+              onChange(order, "matrixColumns", newColumns);
+            }}
+            isReadOnly={isReadOnly}
+            isDisabled={isDisabled}
+          />
+        )}
+        {type === "matrix_input" && (
+          <MatrixInputInput
+            matrixRows={matrixRows}
+            matrixColumns={matrixColumns}
+            onChange={(newRows, newColumns) => {
+              onChange(order, "matrixRows", newRows);
+              onChange(order, "matrixColumns", newColumns);
+            }}
+            isReadOnly={isReadOnly}
+            isDisabled={isDisabled}
           />
         )}
       </Box>
