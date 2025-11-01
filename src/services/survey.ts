@@ -14,6 +14,7 @@ export interface CreateSurveyRequest {
 export interface SubmitSurveyPayload {
   answers: any;
   userEmail?: string;
+  sessionId?: string;
 }
 
 export const getAllSurveys = async (page: number = 1, pageSize: number = 9) => {
@@ -235,6 +236,44 @@ export const deleteResponse = async (surveyId: string, responseId: string) => {
     return response.data;
   } catch (error) {
     console.error("Error deleting response:", error);
+    throw error;
+  }
+};
+
+// Timing session
+export const startTimingSession = async (
+  surveyId: string,
+  userEmail: string
+) => {
+  try {
+    const response = await api.post(`/surveys/${surveyId}/start-session`, {
+      userEmail,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const validateTimingSession = async (
+  surveyId: string,
+  sessionId: string
+) => {
+  try {
+    const response = await api.post(`/surveys/${surveyId}/validate-session`, {
+      sessionId,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const expireTimingSession = async (sessionId: string) => {
+  try {
+    const response = await api.post(`/surveys/sessions/${sessionId}/expire`);
+    return response.data;
+  } catch (error) {
     throw error;
   }
 };

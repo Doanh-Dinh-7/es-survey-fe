@@ -9,10 +9,9 @@ const Footer: React.FC = () => {
       paddingBottom="5"
       textAlign="center"
     >
-      <Text>Copyright © 2025 by Doanh Dinh - Toan Tran {"       "} v2.0.0
-      </Text>
+      <Text>Copyright © 2025 by Doanh Dinh {"       "} v2.0.0</Text>
     </Box>
   );
 };
 
-export default Footer; 
+export default Footer;

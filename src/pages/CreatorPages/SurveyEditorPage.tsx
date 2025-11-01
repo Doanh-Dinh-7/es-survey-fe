@@ -566,17 +566,19 @@ const SurveyEditorPage = () => {
           reqSettings.closeTime = new Date(reqSettings.closeTime).toISOString();
         }
       }
-      await updateSurveySetting(reqSettings, survey.id);
+      const res = await updateSurveySetting(reqSettings, survey.id);
       toast({
         title: "Update settings success",
+        description: res.message,
         status: "success",
         duration: 3000,
         isClosable: true,
         variant: "solid",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Update settings failed",
+        description: error.message,
         status: "error",
         duration: 3000,
         isClosable: true,

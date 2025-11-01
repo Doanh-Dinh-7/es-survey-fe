@@ -70,6 +70,8 @@ export interface SurveySettings {
   requireEmail: boolean;
   allowMultipleResponses: boolean;
   responseLetter: string;
+  enableTiming?: boolean;
+  timingDuration?: number;
   createdAt?: string;
   updatedAt?: string;
 }

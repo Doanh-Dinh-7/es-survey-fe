@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Box,
@@ -35,6 +35,7 @@ import Logo from "../components/Navbar/Logo";
 import ImagePreviewModal from "../components/common/ImagePreviewModal";
 import MatrixChoicePreview from "../components/Survey/SurveyPreview/MatrixChoicePreview";
 import MatrixInputPreview from "../components/Survey/SurveyPreview/MatrixInputPreview";
+import { TimingWrapper } from "../components/common";
 interface LocationState {
   survey: Survey;
   isPreview?: boolean;
@@ -57,13 +58,22 @@ const SurveyPreviewPage = () => {
   const [isSurveyLoading, setIsSurveyLoading] = useState(true);
   const [isClosed, setIsClosed] = useState(false);
   const [isAlreadySubmitted, setIsAlreadySubmitted] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>(() => {
+    const savedEmail = localStorage.getItem(`user_email_${id}`);
+    return savedEmail || "";
+  });
   const [emailError, setEmailError] = useState<string | null>(null);
   const [questionErrors, setQuestionErrors] = useState<
     Record<string, string | null>
   >({});
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [timingSession, setTimingSession] = useState<{
+    sessionId: string;
+    startTime: Date;
+    duration: number;
+    userEmail: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchSurveyData = async () => {
@@ -120,6 +130,98 @@ const SurveyPreviewPage = () => {
       );
     }
   }, [answers, survey?.id]);
+
+  // Save userEmail to localStorage when it changes
+  useEffect(() => {
+    if (id && userEmail) {
+      localStorage.setItem(`user_email_${id}`, userEmail);
+    }
+  }, [userEmail, id]);
+
+  // Timing handlers - MUST be before any early returns
+  const handleTimingSessionStart = useCallback(
+    (session: {
+      sessionId: string;
+      startTime: Date;
+      duration: number;
+      userEmail: string;
+    }) => {
+      setTimingSession(session);
+      if (session.userEmail) {
+        setUserEmail(session.userEmail);
+      }
+    },
+    []
+  );
+
+  const handleTimingSessionExpire = useCallback(() => {
+    setTimingSession(null);
+    toast({
+      title: "Session expired",
+      description: "Your timing session has expired. Please start again.",
+      status: "warning",
+      duration: 5000,
+      isClosable: true,
+      variant: "solid",
+    });
+  }, [toast]);
+
+  const handleTimingSubmit = useCallback(
+    async (sessionId: string) => {
+      const formattedAnswers = Object.entries(answers)
+        .map(([questionId, answer]) => {
+          if (!survey || !survey.questions) return null;
+          const question = survey.questions.find((q) => q.id === questionId);
+          if (!question) return null;
+
+          if (
+            typeof answer === "object" &&
+            answer !== null &&
+            (question.type === "multiple_choice" ||
+              question.type === "checkbox")
+          ) {
+            const baseAnswer =
+              question.type === "multiple_choice"
+                ? answer.optionId
+                : answer.optionIds.join(",");
+            const customText = answer.customText;
+
+            const formatted = {
+              questionId: questionId,
+              answer: baseAnswer,
+            };
+
+            if (customText) {
+              (formatted as any).customText = customText;
+            }
+            return formatted;
+          } else if (Array.isArray(answer)) {
+            return {
+              questionId: questionId,
+              answer: answer.join(","),
+            };
+          }
+          return {
+            questionId: questionId,
+            answer: answer,
+          };
+        })
+        .filter(Boolean);
+
+      const payload: SubmitSurveyPayload = {
+        answers: formattedAnswers,
+        userEmail: timingSession?.userEmail || userEmail,
+        sessionId: sessionId,
+      };
+
+      await SubmitSurvey(id!, payload);
+      setIsSubmitted(true);
+      if (survey?.id) {
+        localStorage.removeItem(`survey_answers_${survey.id}`);
+      }
+    },
+    [answers, survey, userEmail, id, timingSession]
+  );
 
   function smoothScrollToTop(duration = 800) {
     const start = window.scrollY;
@@ -603,6 +705,9 @@ const SurveyPreviewPage = () => {
           if (survey.settings?.requireEmail) {
             payload.userEmail = userEmail;
           }
+          if (timingSession) {
+            payload.sessionId = timingSession.sessionId;
+          }
           await SubmitSurvey(id, payload);
         }
         setIsSubmitted(true);
@@ -918,49 +1023,80 @@ const SurveyPreviewPage = () => {
           </Button>
         )}
       </Box>
-      <Fade in={true} transition={{ enter: { duration: 1 } }}>
-        <VStack spacing={6} align="stretch">
-          {currentPage === 0 && (
-            <>
-              <Heading as="h1" size="lg">
-                {survey.title}
-              </Heading>
-              <Text as="h2" fontSize="md">
-                {survey.description}
-              </Text>
+      {survey && survey.settings?.enableTiming && !isPreview ? (
+        <TimingWrapper
+          survey={survey}
+          onSessionStart={handleTimingSessionStart}
+          onSessionExpire={handleTimingSessionExpire}
+          onSubmit={handleTimingSubmit}
+        >
+          <Fade in={true} transition={{ enter: { duration: 1 } }}>
+            <VStack spacing={6} align="stretch">
+              {renderSurveyContent()}
+            </VStack>
+          </Fade>
+        </TimingWrapper>
+      ) : (
+        <Fade in={true} transition={{ enter: { duration: 1 } }}>
+          <VStack spacing={6} align="stretch">
+            {renderSurveyContent()}
+          </VStack>
+        </Fade>
+      )}
 
-              {survey.surveyMediaUrl && (
-                <AspectRatio
-                  ratio={16 / 9}
-                  width="100%"
-                  mb={2}
-                  borderRadius="md"
-                  overflow="hidden"
-                >
-                  <Image
-                    src={
+      <ImagePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        imageUrl={previewUrl}
+      />
+    </Container>
+  );
+
+  function renderSurveyContent() {
+    return (
+      <>
+        {currentPage === 0 && survey && (
+          <>
+            <Heading as="h1" size="lg">
+              {survey.title}
+            </Heading>
+            <Text as="h2" fontSize="md">
+              {survey.description}
+            </Text>
+
+            {survey.surveyMediaUrl && (
+              <AspectRatio
+                ratio={16 / 9}
+                width="100%"
+                mb={2}
+                borderRadius="md"
+                overflow="hidden"
+              >
+                <Image
+                  src={
+                    import.meta.env.VITE_BACKEND_DOMAIN + survey.surveyMediaUrl
+                  }
+                  alt="Survey Media"
+                  objectFit="contain"
+                  cursor="pointer"
+                  onClick={() =>
+                    handleOpenPreview(
                       import.meta.env.VITE_BACKEND_DOMAIN +
-                      survey.surveyMediaUrl
-                    }
-                    alt="Survey Media"
-                    objectFit="contain"
-                    cursor="pointer"
-                    onClick={() =>
-                      handleOpenPreview(
-                        import.meta.env.VITE_BACKEND_DOMAIN +
-                          survey.surveyMediaUrl
-                      )
-                    }
-                  />
-                </AspectRatio>
-              )}
-              <hr />
-              <Text textAlign="left" color="error">
-                * Indicates required question
-              </Text>
-            </>
-          )}
-          {survey.settings?.requireEmail && (
+                        survey.surveyMediaUrl
+                    )
+                  }
+                />
+              </AspectRatio>
+            )}
+            <hr />
+            <Text textAlign="left" color="error">
+              * Indicates required question
+            </Text>
+          </>
+        )}
+        {survey &&
+          survey.settings?.requireEmail &&
+          !survey.settings?.enableTiming && (
             <FormControl isInvalid={!!emailError} isRequired>
               <Box
                 mb={6}
@@ -999,150 +1135,151 @@ const SurveyPreviewPage = () => {
             </FormControl>
           )}
 
-          <Box>
-            {survey.questions.length <= 4
-              ? survey.questions.map((question, index) => (
-                  <Box
-                    key={question.id}
-                    mb={6}
-                    border="1px solid"
-                    borderColor="gray.200"
-                    p={4}
-                    borderRadius="md"
+        <Box>
+          {survey && survey.questions && survey.questions.length <= 4
+            ? survey.questions.map((question) => (
+                <Box
+                  key={question.id}
+                  mb={6}
+                  border="1px solid"
+                  borderColor="gray.200"
+                  p={4}
+                  borderRadius="md"
+                >
+                  <Flex
+                    justify="center"
+                    textAlign="center"
+                    direction="column"
+                    mb={2}
                   >
-                    <Flex
-                      justify="center"
-                      textAlign="center"
-                      direction="column"
-                      mb={2}
-                    >
-                      <Flex justify="center">
-                        <Text mb={4} fontSize="lg" fontWeight="bold">
-                          {question.questionText}
-                        </Text>
-                        <Text fontSize="sm" color="red">
-                          {question.isRequired ? "*" : ""}
-                        </Text>
-                      </Flex>
-                      <Flex textAlign="center" justify="center">
-                        {question.questionMediaUrl && (
-                          <Image
-                            src={
-                              import.meta.env.VITE_BACKEND_DOMAIN +
-                              question.questionMediaUrl
-                            }
-                            alt={`Question ${question.id}`}
-                            objectFit="contain"
-                            borderRadius="md"
-                            maxW="10vw"
-                            maxH="17vh"
-                            w="auto"
-                            h="auto"
-                            cursor="pointer"
-                            onClick={() =>
-                              handleOpenPreview(
-                                import.meta.env.VITE_BACKEND_DOMAIN +
-                                  question.questionMediaUrl
-                              )
-                            }
-                          />
-                        )}
-                      </Flex>
+                    <Flex justify="center">
+                      <Text mb={4} fontSize="lg" fontWeight="bold">
+                        {question.questionText}
+                      </Text>
+                      <Text fontSize="sm" color="red">
+                        {question.isRequired ? "*" : ""}
+                      </Text>
                     </Flex>
-                    {renderQuestion(question)}
-                  </Box>
-                ))
-              : currentQuestions.map((question, index) => (
-                  <Box
-                    key={question.id}
-                    mb={6}
-                    border="1px solid"
-                    borderColor="gray.200"
-                    p={4}
-                    borderRadius="md"
+                    <Flex textAlign="center" justify="center">
+                      {question.questionMediaUrl && (
+                        <Image
+                          src={
+                            import.meta.env.VITE_BACKEND_DOMAIN +
+                            question.questionMediaUrl
+                          }
+                          alt={`Question ${question.id}`}
+                          objectFit="contain"
+                          borderRadius="md"
+                          maxW="10vw"
+                          maxH="17vh"
+                          w="auto"
+                          h="auto"
+                          cursor="pointer"
+                          onClick={() =>
+                            handleOpenPreview(
+                              import.meta.env.VITE_BACKEND_DOMAIN +
+                                question.questionMediaUrl
+                            )
+                          }
+                        />
+                      )}
+                    </Flex>
+                  </Flex>
+                  {renderQuestion(question)}
+                </Box>
+              ))
+            : currentQuestions.map((question) => (
+                <Box
+                  key={question.id}
+                  mb={6}
+                  border="1px solid"
+                  borderColor="gray.200"
+                  p={4}
+                  borderRadius="md"
+                >
+                  <Flex
+                    justify="center"
+                    gap="2"
+                    textAlign="center"
+                    direction="column"
                   >
-                    <Flex
-                      justify="center"
-                      gap="2"
-                      textAlign="center"
-                      direction="column"
-                    >
-                      <Flex justify="center">
-                        <Text mb={4} fontSize="lg" fontWeight="bold">
-                          {question.questionText}
-                        </Text>
-                        <Text fontSize="sm" color="red">
-                          {question.isRequired ? "*" : ""}
-                        </Text>
-                      </Flex>
-                      <Flex textAlign="center" justify="center">
-                        {question.questionMediaUrl && (
-                          <Image
-                            src={
-                              import.meta.env.VITE_BACKEND_DOMAIN +
-                              question.questionMediaUrl
-                            }
-                            alt={`Question ${question.id}`}
-                            objectFit="contain"
-                            borderRadius="md"
-                            maxW="20vw"
-                            maxH="27vh"
-                            w="auto"
-                            h="auto"
-                            cursor="pointer"
-                            onClick={() =>
-                              handleOpenPreview(
-                                import.meta.env.VITE_BACKEND_DOMAIN +
-                                  question.questionMediaUrl
-                              )
-                            }
-                          />
-                        )}
-                      </Flex>
+                    <Flex justify="center">
+                      <Text mb={4} fontSize="lg" fontWeight="bold">
+                        {question.questionText}
+                      </Text>
+                      <Text fontSize="sm" color="red">
+                        {question.isRequired ? "*" : ""}
+                      </Text>
                     </Flex>
-                    {renderQuestion(question)}
-                  </Box>
-                ))}
-          </Box>
+                    <Flex textAlign="center" justify="center">
+                      {question.questionMediaUrl && (
+                        <Image
+                          src={
+                            import.meta.env.VITE_BACKEND_DOMAIN +
+                            question.questionMediaUrl
+                          }
+                          alt={`Question ${question.id}`}
+                          objectFit="contain"
+                          borderRadius="md"
+                          maxW="20vw"
+                          maxH="27vh"
+                          w="auto"
+                          h="auto"
+                          cursor="pointer"
+                          onClick={() =>
+                            handleOpenPreview(
+                              import.meta.env.VITE_BACKEND_DOMAIN +
+                                question.questionMediaUrl
+                            )
+                          }
+                        />
+                      )}
+                    </Flex>
+                  </Flex>
+                  {renderQuestion(question)}
+                </Box>
+              ))}
+        </Box>
 
-          <Progress value={progress} colorScheme="blue" />
+        <Progress value={progress} colorScheme="blue" />
 
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            mt={4}
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mt={4}
+        >
+          <Button
+            onClick={handleBack}
+            isDisabled={currentPage === 0}
+            colorScheme="gray"
+            variant="outline"
           >
-            <Button
-              onClick={handleBack}
-              isDisabled={currentPage === 0}
-              colorScheme="gray"
-              variant="outline"
-            >
-              Back
-            </Button>
-            <Text mb={2} fontWeight="bold" fontSize="md">
-              {/* {questionsPerPage === 1 || survey.questions.length <= 4
+            Back
+          </Button>
+          <Text mb={2} fontWeight="bold" fontSize="md">
+            {/* {questionsPerPage === 1 || survey.questions.length <= 4
                 ? `Page ${currentPage + 1} of ${totalPages}`
                 : `Questions ${startIdx + 1} - ${Math.min(
                     endIdx,
                     survey.questions.length
                   )} of ${survey.questions.length}`} */}
-              {`Page ${currentPage + 1} of ${totalPages}`}
-            </Text>
-            <Button onClick={handleNext} colorScheme="blue">
-              {currentPage === totalPages - 1 ? "Submit" : "Next"}
-            </Button>
-          </Box>
-        </VStack>
-      </Fade>
-      <ImagePreviewModal
-        isOpen={isPreviewOpen}
-        onClose={handleClosePreview}
-        imageUrl={previewUrl}
-      />
-    </Container>
-  );
+            {`Page ${currentPage + 1} of ${totalPages}`}
+          </Text>
+          <Button
+            onClick={
+              timingSession
+                ? () => handleTimingSubmit(timingSession.sessionId)
+                : handleNext
+            }
+            colorScheme="blue"
+          >
+            {currentPage === totalPages - 1 ? "Submit" : "Next"}
+          </Button>
+        </Box>
+      </>
+    );
+  }
 };
 
 export default SurveyPreviewPage;

@@ -93,11 +93,13 @@ const Home: React.FC = () => {
     title: string;
     message: React.ReactNode;
     onConfirm: () => void;
+    loading?: boolean;
   }>({
     isOpen: false,
     title: "",
     message: "",
     onConfirm: () => {},
+    loading: false,
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -184,7 +186,9 @@ const Home: React.FC = () => {
           </Text>
         </Text>
       ),
+      loading: false,
       onConfirm: async () => {
+        setModalConfig((prev) => ({ ...prev, loading: true }));
         try {
           const res = await deleteSurvey(survey.id);
           if (res.statusCode === 200) {
@@ -207,8 +211,9 @@ const Home: React.FC = () => {
             isClosable: true,
             variant: "solid",
           });
+        } finally {
+          setModalConfig({ ...modalConfig, isOpen: false, loading: false });
         }
-        setModalConfig({ ...modalConfig, isOpen: false });
       },
     });
   };
@@ -596,6 +601,7 @@ const Home: React.FC = () => {
         onConfirm={modalConfig.onConfirm}
         title={modalConfig.title}
         message={modalConfig.message}
+        loading={modalConfig.loading}
       />
     </MotionBox>
   );

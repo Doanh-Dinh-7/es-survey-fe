@@ -89,6 +89,8 @@ const SurveyResult: React.FC = () => {
   const [isDeleteResponseModalOpen, setIsDeleteResponseModalOpen] =
     useState(false);
   const [responseToDelete, setResponseToDelete] = useState<string | null>(null);
+  const [isCloseSurveyLoading, setIsCloseSurveyLoading] = useState(false);
+  const [isDeleteResponseLoading, setIsDeleteResponseLoading] = useState(false);
   const [responses, setResponses] = useState<ResponseDetail[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -403,6 +405,7 @@ const SurveyResult: React.FC = () => {
   };
 
   const handleConfirmClose = async () => {
+    setIsCloseSurveyLoading(true);
     try {
       const res = await changeStatusSurvey(surveyStatistics.surveyId);
       if (res.statusCode === 200) {
@@ -430,8 +433,10 @@ const SurveyResult: React.FC = () => {
         isClosable: true,
         variant: "solid",
       });
+    } finally {
+      setIsCloseSurveyLoading(false);
+      setIsConfirmModalOpen(false);
     }
-    setIsConfirmModalOpen(false);
   };
 
   const handlePageChange = (page: number) => {
@@ -446,6 +451,7 @@ const SurveyResult: React.FC = () => {
   const handleConfirmDeleteResponse = async () => {
     if (!responseToDelete || !surveyStatistics) return;
 
+    setIsDeleteResponseLoading(true);
     try {
       await deleteResponse(surveyStatistics.surveyId, responseToDelete);
 
@@ -489,6 +495,7 @@ const SurveyResult: React.FC = () => {
         variant: "solid",
       });
     } finally {
+      setIsDeleteResponseLoading(false);
       setIsDeleteResponseModalOpen(false);
       setResponseToDelete(null);
     }
@@ -569,10 +576,14 @@ const SurveyResult: React.FC = () => {
       {surveyStatistics.status === "PUBLISHED" && (
         <ModalConfirm
           isOpen={isConfirmModalOpen}
-          onClose={() => setIsConfirmModalOpen(false)}
+          onClose={() => {
+            setIsConfirmModalOpen(false);
+            setIsCloseSurveyLoading(false);
+          }}
           onConfirm={handleConfirmClose}
           title="Close Survey"
           message="Are you sure you want to close?"
+          loading={isCloseSurveyLoading}
         />
       )}
 
@@ -581,11 +592,13 @@ const SurveyResult: React.FC = () => {
         onClose={() => {
           setIsDeleteResponseModalOpen(false);
           setResponseToDelete(null);
+          setIsDeleteResponseLoading(false);
         }}
         onConfirm={handleConfirmDeleteResponse}
         title="Delete Response"
         message="Are you sure you want to delete this response? This action cannot be undone."
         confirmColorScheme="red"
+        loading={isDeleteResponseLoading}
       />
     </Flex>
   );

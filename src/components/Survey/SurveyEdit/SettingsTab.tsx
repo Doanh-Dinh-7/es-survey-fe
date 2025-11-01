@@ -9,6 +9,15 @@ import {
   FormErrorMessage,
   Textarea,
   Button,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Switch,
+  HStack,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
 import React from "react";
 import { SurveySettings } from "../../../types/question.types";
@@ -65,15 +74,21 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                     requireEmail: e.target.checked,
                   }))
                 }
-                disabled={isClosedSurvey}
+                disabled={isClosedSurvey || settings.enableTiming}
                 style={{ width: 18, height: 18, marginRight: 8 }}
               />
               <Text
                 as="span"
                 fontSize="sm"
-                _hover={{ cursor: !isClosedSurvey ? "pointer" : "not-allowed" }}
+                _hover={{
+                  cursor:
+                    !isClosedSurvey && !settings.enableTiming
+                      ? "pointer"
+                      : "not-allowed",
+                }}
                 onClick={() => {
                   !isClosedSurvey &&
+                    !settings.enableTiming &&
                     setSettings((prev) => ({
                       ...prev,
                       requireEmail: !prev.requireEmail,
@@ -81,6 +96,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}
               >
                 Allow users to submit their email address
+                {settings.enableTiming && (
+                  <Text as="span" color="blue.500" ml={1}>
+                    (Required for timing)
+                  </Text>
+                )}
               </Text>
             </FormControl>
           </Box>
@@ -118,6 +138,86 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             </FormControl>
           </Box>
         </Flex>
+
+        {/* Timing Settings */}
+        <Box textAlign="left">
+          <Text mb={2} fontWeight="bold">
+            Timing Settings
+          </Text>
+          <VStack spacing={4} align="stretch">
+            <HStack justify="space-between" align="center">
+              <Box flex={1}>
+                <Text mb={1} fontSize="sm" fontWeight="medium">
+                  Enable Timing
+                </Text>
+                <Text fontSize="xs" color="gray.600">
+                  Set a time limit for completing the survey
+                </Text>
+              </Box>
+              <Switch
+                isChecked={!!settings.enableTiming}
+                onChange={(e) => {
+                  const isEnabled = e.target.checked;
+                  setSettings((prev) => ({
+                    ...prev,
+                    enableTiming: isEnabled,
+                    requireEmail: isEnabled ? true : prev.requireEmail,
+                    timingDuration: isEnabled
+                      ? prev.timingDuration || 1
+                      : undefined,
+                  }));
+                }}
+                isDisabled={isClosedSurvey}
+                colorScheme="blue"
+              />
+            </HStack>
+
+            {settings.enableTiming && (
+              <Box>
+                <Text mb={1} fontSize="sm" fontWeight="medium">
+                  Time Limit (minutes)
+                </Text>
+                <NumberInput
+                  value={settings.timingDuration || 1}
+                  onChange={(valueString, valueNumber) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      timingDuration: valueNumber || 1,
+                    }))
+                  }
+                  min={1}
+                  isDisabled={isClosedSurvey}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+                <Text fontSize="xs" color="gray.600" mt={1}>
+                  Duration minimum: 1 minute
+                </Text>
+              </Box>
+            )}
+
+            {settings.enableTiming && (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium">
+                    Timing Requirements
+                  </Text>
+                  <Text fontSize="xs">
+                    • Email is required when timing is enabled • Users must
+                    start a session before taking the survey • Survey will
+                    auto-submit when time expires
+                  </Text>
+                </Box>
+              </Alert>
+            )}
+          </VStack>
+        </Box>
+
         <Box textAlign="left">
           <Text mb={2} fontWeight="bold">
             Time Settings

@@ -14,11 +14,7 @@ const App: React.FC = () => {
     }
   }, [isLoading, isAuthenticated, auth0Client]);
 
-  return (
- 
-      <Router />
-
-  );
+  return <Router />;
 };
 
 export default App;
